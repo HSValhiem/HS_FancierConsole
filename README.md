@@ -17,6 +17,7 @@ Let FancierConsole make your console the object of envy, proving that even in th
 
 ![image](https://github.com/HSValhiem/HS_FancierConsole/assets/18600015/90c5baa8-c2db-472c-8064-440ec1f608f3)
 
+![image](https://github.com/HSValhiem/HS_FancierConsole/assets/18600015/651d77dc-eb76-4c3d-839c-8d2573cf10af)
 
 ## Thanks!
 Massive Thanks to Smoothbrain for the amazing Libraries and Mods provided to the community!

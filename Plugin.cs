@@ -112,9 +112,9 @@ public class HS_FancierConsole : BaseUnityPlugin
         ConfigConsoleDisplayedLevel = config("1 - General", "LogLevels", LogLevel.Fatal | LogLevel.Error | LogLevel.Message | LogLevel.Info | LogLevel.Warning, "Which log levels to show in the console output.");
         ConfigLogUnity = config("1 - General", "Log Unity", true, "Enable Unity Log Messages in Console");
         ConfigDateTimeFormat = config("1 - General", "Date Time Format", "hh:mm:ss tt", "Set the Format for the Date Time Prefix");
-        ConfigChangeFont = config("2 - Font", "Enable Font", false, "Enable Changing the Font");
-        ConfigFontWeight = config("2 - Font", "Font Weight", 16, "Set Size of the Font");
-        ConfigFontName = config("2 - Font", "Font Name", "Consolas", "Name of the Font to Use (Must be TrueType)");
+        //ConfigChangeFont = config("2 - Font", "Enable Font", false, "Enable Changing the Font");
+        //ConfigFontWeight = config("2 - Font", "Font Weight", 16, "Set Size of the Font");
+        //ConfigFontName = config("2 - Font", "Font Name", "Consolas", "Name of the Font to Use (Must be TrueType)");
 
         ConfigEnablePrettyStackTrace = config("4 - Stack Trace Color Mapping", "Pretty Stack Trace", true, "Enable Pretty Stack Trace");
 
@@ -193,11 +193,13 @@ public class HS_FancierConsole : BaseUnityPlugin
                 IntPtr ptr = new IntPtr(newInfo.FaceName);
                 Marshal.Copy(fontName.ToCharArray(), 0, ptr, fontName.Length);
                 // Get some settings from current font.
-                newInfo.dwFontSize = new COORD((short)(ConfigFontWeight.Value), (short)(ConfigFontWeight.Value));
+                //newInfo.dwFontSize = new COORD((short)(ConfigFontWeight.Value), (short)(ConfigFontWeight.Value));
                 newInfo.FontWeight = ConfigFontWeight.Value;
                 SetCurrentConsoleFontEx(hnd, false, newInfo);
             }
         }
+
+        throw new Exception("Test Exception");
     }
 }
 

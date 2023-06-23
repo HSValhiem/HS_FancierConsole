@@ -4,7 +4,7 @@
     <TargetFramework>net462</TargetFramework>
     <AssemblyName>HS_FancierConsole</AssemblyName>
     <Description>HS_FancierConsole</Description>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
 	<LangVersion>10</LangVersion>
 	<Nullable>enable</Nullable>
 	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>

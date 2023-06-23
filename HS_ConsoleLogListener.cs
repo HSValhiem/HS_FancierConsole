@@ -99,8 +99,8 @@ public class HS_ConsoleLogListener : ILogListener
     public void LogStackTrace(string line)
     {
         // Load Config Settings
-        var stackTraceBannerFGColor = HS_FancierConsole.DefaultColorsExceptionPre[0];
-        var stackTraceBannerBGColor = HS_FancierConsole.DefaultColorsExceptionPre[1];
+        var stackTraceBannerFGColor = HS_FancierConsole.DefaultColorsStackTraceBanner[0];
+        var stackTraceBannerBGColor = HS_FancierConsole.DefaultColorsStackTraceBanner[1];
         var stackTraceFGColor = HS_FancierConsole.DefaultColorsStackTrace[0];
         var stackTraceBGColor = HS_FancierConsole.DefaultColorsStackTrace[1];
         var exceptionFGColor = HS_FancierConsole.DefaultColorsException[0];

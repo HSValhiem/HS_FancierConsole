@@ -1,0 +1,9 @@
+{
+    "name": "HS_FancierConsole",
+    "version_number": "0.1.0",
+    "website_url": "https://github.com/HSValhiem/HS_FancierConsole",
+    "description": "Enhance your BepInEx Console by Making it Fancy with Colors and Formatting!",
+    "dependencies": [
+        "denikson-BepInExPack_Valheim-5.4.2105"
+    ]
+}

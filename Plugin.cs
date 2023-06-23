@@ -15,7 +15,7 @@ public class HS_FancierConsole : BaseUnityPlugin
 {
 	public const string ModGUID = "hs.fancierconsole";
 	public const string ModName = "HS_FancierConsole";
-    public const string ModVersion = "0.1.0";
+    public const string ModVersion = "0.1.1";
 
 	public static ConfigSync configSync = new(ModGUID) { DisplayName = ModName, CurrentVersion = ModVersion, MinimumRequiredVersion = "0.1.0", ModRequired = false };
 
@@ -68,6 +68,13 @@ public class HS_FancierConsole : BaseUnityPlugin
 
     #endregion
 
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    static extern bool GetCurrentConsoleFontEx(
+        IntPtr consoleOutput,
+        bool maximumWindow,
+        ref CONSOLE_FONT_INFO_EX lpConsoleCurrentFontEx);
+
     [DllImport("kernel32.dll", SetLastError = true)]
     static extern bool SetCurrentConsoleFontEx(
         IntPtr consoleOutput,
@@ -112,9 +119,9 @@ public class HS_FancierConsole : BaseUnityPlugin
         ConfigConsoleDisplayedLevel = config("1 - General", "LogLevels", LogLevel.Fatal | LogLevel.Error | LogLevel.Message | LogLevel.Info | LogLevel.Warning, "Which log levels to show in the console output.");
         ConfigLogUnity = config("1 - General", "Log Unity", true, "Enable Unity Log Messages in Console");
         ConfigDateTimeFormat = config("1 - General", "Date Time Format", "hh:mm:ss tt", "Set the Format for the Date Time Prefix");
-        //ConfigChangeFont = config("2 - Font", "Enable Font", false, "Enable Changing the Font");
-        //ConfigFontWeight = config("2 - Font", "Font Weight", 16, "Set Size of the Font");
-        //ConfigFontName = config("2 - Font", "Font Name", "Consolas", "Name of the Font to Use (Must be TrueType)");
+        ConfigChangeFont = config("2 - Font", "Enable Font", true, "Enable Changing the Font");
+        ConfigFontWeight = config("2 - Font", "Font Weight", 16, "Set Size of the Font");
+        ConfigFontName = config("2 - Font", "Font Name", "Consolas", "Name of the Font to Use (Must be TrueType)");
 
         ConfigEnablePrettyStackTrace = config("4 - Stack Trace Color Mapping", "Pretty Stack Trace", true, "Enable Pretty Stack Trace");
 
@@ -187,19 +194,26 @@ public class HS_FancierConsole : BaseUnityPlugin
             IntPtr hnd = BepInEx.ConsoleUtil.Kon.GetStdHandle(STD_OUTPUT_HANDLE);
             if (hnd != INVALID_HANDLE_VALUE)
             {
-                CONSOLE_FONT_INFO_EX newInfo = new CONSOLE_FONT_INFO_EX();
-                newInfo.cbSize = (uint)Marshal.SizeOf(newInfo);
-                newInfo.FontFamily = TMPF_TRUETYPE;
-                IntPtr ptr = new IntPtr(newInfo.FaceName);
-                Marshal.Copy(fontName.ToCharArray(), 0, ptr, fontName.Length);
-                // Get some settings from current font.
-                //newInfo.dwFontSize = new COORD((short)(ConfigFontWeight.Value), (short)(ConfigFontWeight.Value));
-                newInfo.FontWeight = ConfigFontWeight.Value;
-                SetCurrentConsoleFontEx(hnd, false, newInfo);
+                CONSOLE_FONT_INFO_EX info = new CONSOLE_FONT_INFO_EX();
+                info.cbSize = (uint)Marshal.SizeOf(info);
+                // First determine whether there's already a TrueType font.
+                if (GetCurrentConsoleFontEx(hnd, false, ref info))
+                {
+                   // bool tt = (info.FontFamily & TMPF_TRUETYPE) == TMPF_TRUETYPE;
+                    //if (tt) { return; }
+
+                    CONSOLE_FONT_INFO_EX newInfo = new CONSOLE_FONT_INFO_EX();
+                    newInfo.cbSize = (uint)Marshal.SizeOf(newInfo);
+                    newInfo.FontFamily = TMPF_TRUETYPE;
+                    IntPtr ptr = new IntPtr(newInfo.FaceName);
+                    Marshal.Copy(fontName.ToCharArray(), 0, ptr, fontName.Length);
+                    // Get some settings from current font.
+                    newInfo.dwFontSize = new COORD((short)ConfigFontWeight.Value, (short)ConfigFontWeight.Value);
+                    newInfo.FontWeight = ConfigFontWeight.Value;
+                    SetCurrentConsoleFontEx(hnd, false, newInfo);
+                }
             }
         }
-
-        throw new Exception("Test Exception");
     }
 }
 

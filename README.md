@@ -29,7 +29,7 @@ Please note that the current version of this mod, **Fancier Console**, is in bet
 
 We greatly appreciate your support and encourage you to report any issues you encounter during your gameplay. Your feedback is crucial in helping us improve the mod and provide a better experience for all users.
 
-To report any issues or bugs, please visit our [GitHub Issues page](https://github.com/HSValhiem/HS_FancierConsole). We kindly ask you to provide detailed information about the problem you encountered, including steps to reproduce it if possible. Our team will promptly review and address your reported issues.
+To report any issues or bugs, please visit our [GitHub Issues page](https://github.com/HSValhiem/HS_FancierConsole/issues/new). We kindly ask you to provide detailed information about the problem you encountered, including steps to reproduce it if possible. Our team will promptly review and address your reported issues.
 
 Thank you for your understanding and cooperation in making **Fancier Console** the best it can be!
 

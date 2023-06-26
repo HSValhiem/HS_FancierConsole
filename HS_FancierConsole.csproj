@@ -21,7 +21,6 @@
 
 	<ItemGroup>
     <PackageReference Include="BepInEx.Core" Version="5.*" />
-    <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.18.2" />
 
   </ItemGroup>
 	<ItemGroup>
@@ -72,9 +71,6 @@
 	  </Reference>
 	  <Reference Include="BepInEx" Publicize="true">
 	    <HintPath>Libs\BepInEx\BepInEx.dll</HintPath>
-	  </Reference>
-	  <Reference Include="ServerSync" Publicize="true">
-	    <HintPath>Libs\Blaxxun\ServerSync.dll</HintPath>
 	  </Reference>
 	  <Reference Include="Unity.TextMeshPro">
 	    <HintPath>Libs\unstripped_corlib\Unity.TextMeshPro.dll</HintPath>
@@ -289,21 +285,21 @@
 	  <None Update="Libs\BepInEx\MonoMod.Utils.dll">
 	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  </None>
-	  <None Update="Libs\Blaxxun\ServerSync.dll">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
 	  <None Update="ServerSync.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-  
-  	<Target Name="MyCustomBuildTask2" BeforeTargets="ILRepacker">
-		<Exec Command="xcopy &quot;$(OutputPath)Libs\BepInEx\&quot; &quot;$(OutputPath)&quot; /Y " />
+
+
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+		<Exec Command="xcopy &quot;$(TargetPath)&quot; &quot;D:\Valheim_Dev\Dedicated Dev Server\Valheim dedicated server\BepInEx\patchers&quot; /Y " />
+		<Exec Condition="'$(Configuration)' != 'Release'" Command="xcopy &quot;$(TargetDir)$(TargetName).pdb&quot; &quot;D:\Valheim_Dev\Dedicated Dev Server\Valheim dedicated server\BepInEx\patchers&quot; /Y " />
 	</Target>
 
-	<Target Name="MyCustomBuildTask" AfterTargets="ILRepacker">
-		<Exec Command="xcopy &quot;$(TargetPath)&quot; &quot;D:\Valheim_Dev\Valheim_Debug\BepInEx\plugins&quot; /Y " />
-		<Exec Condition="'$(Configuration)' != 'Release'" Command="xcopy &quot;$(TargetDir)$(TargetName).pdb&quot; &quot;D:\Valheim_Dev\Valheim_Debug\BepInEx\plugins&quot; /Y " />
+
+	<Target Name="PostBuild2" AfterTargets="PostBuild">
+		<Exec Command="xcopy &quot;$(TargetPath)&quot; &quot;D:\Valheim_Dev\Valheim_Debug\BepInEx\patchers&quot; /Y " />
+		<Exec Condition="'$(Configuration)' != 'Release'" Command="xcopy &quot;$(TargetDir)$(TargetName).pdb&quot; &quot;D:\Valheim_Dev\Valheim_Debug\BepInEx\patchers&quot; /Y " />
 	</Target>
 
 </Project>

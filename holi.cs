@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Runtime.InteropServices;
 using System;
+using System.IO;
 using BepInEx;
 
 public static class Holi
@@ -62,6 +63,11 @@ public static class Holi
         return ForeColor(text, rgb[0], rgb[1], rgb[2]);
     }
 
+    public static string ForeColor(this string text, int id)
+    {
+        return $"\u001b[38;5;{id}m{text}\u001b[0m";
+    }
+
     public static string BackColor(this string text, byte red, byte green, byte blue)
     {
         return $"\x1B[48;2;{red};{green};{blue}m{text}";
@@ -101,6 +107,7 @@ public static class Holi
 
     public static void Print(this string text)
     {
+
         ConsoleManager.ConsoleStream?.Write($"{text}{RESET}");
     }
 
@@ -135,6 +142,7 @@ public static class Holi
 
     }
 
+
     public static string BackColor(params byte[] rgb)
     {
         if (rgb == null || rgb.Length == 0)
@@ -150,5 +158,6 @@ public static class Holi
 
         return "\x1B[0m";
     }
+
 
 }

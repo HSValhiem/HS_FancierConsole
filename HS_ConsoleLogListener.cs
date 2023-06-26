@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
 using BepInEx;
 using BepInEx.Logging;
 using BepInEx.Preloader;
+using UnityEngine;
 
 namespace HS_FancierConsole;
-
 
 // Custom ConsoleLogListener to Implement Colored Console Text and Regex Formatting
 public class HS_ConsoleLogListener : ILogListener
@@ -16,6 +17,7 @@ public class HS_ConsoleLogListener : ILogListener
     public static int init;
 
     private static CancellationTokenSource cancellationTokenSource;
+
     public void LogEvent(object sender, LogEventArgs eventArgs)
     {
         // Handle Unity Logs
@@ -24,101 +26,113 @@ public class HS_ConsoleLogListener : ILogListener
         // Handle Log Level
         if ((eventArgs.Level & HS_FancierConsole.ConfigConsoleDisplayedLevel.Value) == 0) return;
 
+        // Get Log Line
         var line = eventArgs.ToStringLine();
-
 
         // Always Remove Duplicates
         if (line == lastLine) return;
-        lastLine = line;
+            lastLine = line;
 
-        // Don't Handle Unity Logs in Client because of out Custom Debug Log Override, but if Headless it doesn't care so we Allow it.
-        if (eventArgs.Source.SourceName != "Unity Log" || HS_FancierConsole.IsHeadless)
+
+        // Make Stake Trace Pretty
+        if (line.Contains("Stack trace:") && HS_FancierConsole.ConfigEnablePrettyStackTrace.Value)
         {
-            // Make Stake Trace Pretty
-            if (line.Contains("Stack trace:") && HS_FancierConsole.ConfigEnablePrettyStackTrace.Value)
+            LogStackTrace(line);
+            return;
+        }
+
+        // Set Default Colors from Settings
+        var foregroundColor = HS_FancierConsole.DefaultColors[0];
+        var backgroundColor = HS_FancierConsole.DefaultColors[1];
+
+        // Setup Colors from Color Map Settings
+        foreach (var mapping in HS_FancierConsole.ColorMappingsStrings)
+        {
+            var mappedLine = mapping.Split(new[] { ',' });
+            if (Regex.IsMatch(line, mappedLine[0]))
             {
-                LogStackTrace(line);
-                return;
+                foregroundColor = mappedLine[1];
+                backgroundColor = mappedLine[2];
+                break;
             }
+        }
 
-            // Set Default Colors
-            var foregroundColor = HS_FancierConsole.DefaultColors[0];
-            var backgroundColor = HS_FancierConsole.DefaultColors[1];
+        // Check for First Line after Patchers are Loaded so we can Clear the Console and the Replay the Preloader Logs with Formatting and Color
+        if (line.Contains("Preloader finished") && init == 0)
+        {
+            // Step Initialization
+            init = 1;
 
-            // Setup Colors from Color Map
-            foreach (var mapping in HS_FancierConsole.ColorMappingsStrings)
+            Console.Clear();
+
+            // Replay Preloader Log
+            if (HS_FancierConsole.IsHeadless)
             {
-                var mappedLine = mapping.Split(new[] { ',' });
-                if (Regex.IsMatch(line, mappedLine[0]))
+                PreloaderConsoleListener.LogEvents.ToList().ForEach(logEventArgs => new HS_ConsoleLogListener().LogEvent(new ManualLogSource("Preloader"), logEventArgs));
+                DisplayBanner(HS_FancierConsole.DefaultColorsBanner[0], HS_FancierConsole.DefaultColorsBanner[1]);
+            }
+        }
+
+        // Check for Duplicate Preloader finished Line which also signifies the Preloader is finished, so now is a good time to display our banner.
+        if (line.Contains("Preloader finished") && init == 1 && !HS_FancierConsole.IsHeadless)
+        {
+            // Set Init to Fully Initialized
+            init = 3;
+
+            // Ensure that the Cursor is in the correct position
+            Console.SetCursorPosition(0, Console.CursorTop);
+
+            // Clear the Preloader finished Line
+            line = "";
+            int bannerID = 0;
+            if (HS_FancierConsole.ConfigBannerEnabled.Value)
+            {
+                if (HS_FancierConsole.ConfigBannerRainbow.Value)
                 {
-                    foregroundColor = mappedLine[1];
-                    backgroundColor = mappedLine[2];
-                    break;
+                    // Setup Break out Token
+                    cancellationTokenSource = new CancellationTokenSource();
+                    var cancellationToken = cancellationTokenSource.Token;
+
+                    // Create Rainbow Intro while waiting for Intro Movies to Finish
+                    Thread thread = new Thread(() =>
+                        Enumerable.Range(0, int.MaxValue)
+                            .Select(_ =>
+                            {
+                                if (cancellationToken.IsCancellationRequested)
+                                    return false;
+
+                                DisplayBanner(bannerID);
+                                "Waiting for Intro Movies to Finish\n".PadLeft((Console.WindowWidth + 34) / 2).ForeColor(bannerID / 2).Print();
+                                Console.SetCursorPosition(0, Console.CursorTop - 4);
+
+                                bannerID++;
+                                if (bannerID > 229) // Only go to 229 because the rest is greyscale
+                                    bannerID = 0;
+
+                                Thread.Sleep(300);
+                                return true;
+                            })
+                            .TakeWhile(condition => condition)
+                            .ToList()
+                    );
+                    thread.Start();
+                }
+                else
+                {
+                    // Display Normal Banner
+                    DisplayBanner(HS_FancierConsole.DefaultColorsBanner[0], HS_FancierConsole.DefaultColorsBanner[1]);
+                    "Waiting for Intro Movies to Finish\n".PadLeft((Console.WindowWidth + 34) / 2).ForeColor(HS_FancierConsole.DefaultColorsLoading[0]).BackColor(HS_FancierConsole.DefaultColorsLoading[1]).Print();
                 }
             }
+        }
 
-            // Check for First Like after Patchers are Loaded.
-            if (line.Contains("Preloader finished") && init == 0)
+        // Check for BepInEx Line to detect when Intro is Finished
+        Version version = typeof(Paths).Assembly.GetName().Version;
+        if (line.Contains($"BepInEx {version}"))
+        {
+            // Stop the Rainbow Banner Thread if Enabled
+            if (HS_FancierConsole.ConfigBannerRainbow.Value && !HS_FancierConsole.IsHeadless)
             {
-                Console.Clear();
-                if (HS_FancierConsole.IsHeadless)
-                    PreloaderConsoleListener.LogEvents.ToList().ForEach(logEventArgs => new HS_ConsoleLogListener().LogEvent(new ManualLogSource("Preloader"), logEventArgs));
-                init = 1;
-            }
-
-            if (line.Contains("Preloader finished") && init == 1)
-            { 
-                int bannerID = 0;
-                Console.SetCursorPosition(0, Console.CursorTop);
-                line = "";
-                init = 3;
-                cancellationTokenSource = new CancellationTokenSource();
-                var cancellationToken = cancellationTokenSource.Token;
-                // Create a new thread and start the loop
-                Thread thread = new Thread(() =>
-                    Enumerable.Range(0, int.MaxValue)
-                        .Select(_ =>
-                        {
-                            if (cancellationToken.IsCancellationRequested)
-                                return false;
-
-                            int consoleWidth = Console.WindowWidth;
-                            int textLength = 64;
-                            int leftPadding = (consoleWidth - textLength) / 2;
-
-
-                            // Display Banner
-                            var text1 = "╔══════════════════════════════════════════════════════════╗\n".PadLeft(leftPadding + textLength);
-                            var text2 = $"║                     Fancier Log v{HS_FancierConsole.ModVersion}                   ║\n".PadLeft(leftPadding + textLength);
-                            var text3 = "╚══════════════════════════════════════════════════════════╝\n".PadLeft(leftPadding + textLength);
-
-                            text1.ForeColor(bannerID).Print();
-                            text2.ForeColor(bannerID).Print();
-                            text3.ForeColor(bannerID).Print();
-                            "Waiting for Intro Movies to Finish\n".PadLeft(leftPadding + 50).ForeColor(bannerID / 2).Print();
-                            Console.SetCursorPosition(0, Console.CursorTop - 4);
-
-
-                            bannerID++;
-
-                            if (bannerID > 255)
-                                bannerID = 0;
-                            // Sleep for a short duration to avoid high CPU usage
-                            Thread.Sleep(300); // Sleep for 1 second
-
-                            return true;
-                        })
-                        .TakeWhile(condition => condition)
-                        .ToList()
-                );
-                thread.Start();
-            }
-
-
-            Version version = typeof(Paths).Assembly.GetName().Version;
-            if (line.Contains($"BepInEx {version}"))
-            { ;
-                init = 2;
                 // Request cancellation of the loop thread
                 cancellationTokenSource?.Cancel();
 
@@ -128,21 +142,33 @@ public class HS_ConsoleLogListener : ILogListener
                 // Clean up the CancellationTokenSource
                 cancellationTokenSource?.Dispose();
                 cancellationTokenSource = null;
-                StartFancierLog();
-
             }
 
-            // Fill lines with whitespace to change background
-            new string(' ', Console.WindowWidth - Console.CursorLeft).ForeColor(foregroundColor).BackColor(backgroundColor).Print();
-            Console.SetCursorPosition(0, Console.CursorTop);
+            string.Empty.Print();
 
-            // Format the Line
-            line = Filter(line);
+            // Clear the Console here since it did not get cleared in the Loop if Rainbow Banner is Disabled
+            if (!HS_FancierConsole.ConfigBannerRainbow.Value && HS_FancierConsole.ConfigBannerEnabled.Value)
+                Console.Clear();
 
-            // Write the colored line
-            line.ForeColor(foregroundColor).BackColor(backgroundColor).Print();
-
+            // Display Intro Banner
+            if (HS_FancierConsole.ConfigBannerEnabled.Value && !HS_FancierConsole.IsHeadless)
+                DisplayBanner(HS_FancierConsole.DefaultColorsBanner[0], HS_FancierConsole.DefaultColorsBanner[1]);
         }
+
+        // Set Console Title
+        if (line.Contains("Chainloader started") && HS_FancierConsole.ChangeTitle.Value)
+            SetTitle();
+
+        // Fill lines with whitespace to change background
+        new string(' ', Console.WindowWidth - Console.CursorLeft).ForeColor(foregroundColor).BackColor(backgroundColor).Print();
+        Console.SetCursorPosition(0, Console.CursorTop);
+
+        // Format the Line
+        line = Filter(line);
+
+        // Write the colored line
+        line.ForeColor(foregroundColor).BackColor(backgroundColor).Print();
+        
     }
 
     public static string Filter(string text)
@@ -172,7 +198,6 @@ public class HS_ConsoleLogListener : ILogListener
         if (line.EndsWith("\n\r\n"))
             line = line.TrimEnd('\n');
 
-
         // Add timestamps and mod names (or other info) back in, to maintain consistency in the log.
         string timestamp = DateTime.Now.ToString(dateTimeFormat);
         if (!string.IsNullOrEmpty(line))
@@ -189,38 +214,52 @@ public class HS_ConsoleLogListener : ILogListener
         }
 
         return line;
-
     }
 
-    public static void StartFancierLog()
+    public static void DisplayBanner(object color, string bgColor = "")
     {
-        Console.Clear();
+
         int consoleWidth = Console.WindowWidth;
-        int textLength = 64;
+        int textLength = 62;
         int leftPadding = (consoleWidth - textLength) / 2;
 
-        var foregroundColor = HS_FancierConsole.DefaultColors[0];
-        var backgroundColor = HS_FancierConsole.DefaultColors[1];
-
-        System.Random random = new System.Random();
-        int bannerID = random.Next(1, 229);
         // Display Banner
-        new string(' ', Console.WindowWidth - Console.CursorLeft).ForeColor(bannerID).BackColor(backgroundColor).Print();
-        Console.SetCursorPosition(0, Console.CursorTop);
-        "╔══════════════════════════════════════════════════════════╗\n".PadLeft(leftPadding + textLength).ForeColor(bannerID).BackColor(backgroundColor).Print();
-        new string(' ', Console.WindowWidth - Console.CursorLeft).ForeColor(bannerID).BackColor(backgroundColor).Print();
-        Console.SetCursorPosition(0, Console.CursorTop);
-        $"║                     Fancier Log v{HS_FancierConsole.ModVersion}                   ║\n".PadLeft(leftPadding + textLength).ForeColor(bannerID).BackColor(backgroundColor).Print();
-        new string(' ', Console.WindowWidth - Console.CursorLeft).ForeColor(bannerID).BackColor(backgroundColor).Print();
-        Console.SetCursorPosition(0, Console.CursorTop);
-        "╚══════════════════════════════════════════════════════════╝\n".PadLeft(leftPadding + textLength).ForeColor(bannerID).BackColor(backgroundColor).Print();
+        var text1 =
+            "╔══════════════════════════════════════════════════════════╗\n".PadLeft(
+                leftPadding + textLength);
+        var text2 =
+            $"║                    Fancier Log v{HS_FancierConsole.ModVersion}                    ║\n"
+                .PadLeft(leftPadding + textLength);
+        var text3 =
+            "╚══════════════════════════════════════════════════════════╝\n".PadLeft(
+                leftPadding + textLength);
+        if (color is int)
+        {
+            text1.ForeColor((int)color).Print();
+            text2.ForeColor((int)color).Print();
+            text3.ForeColor((int)color).Print();
 
+        }
+        else if (color is string)
+        {
+            text1.ForeColor((string)color).BackColor(bgColor).Print();
+            text2.ForeColor((string)color).BackColor(bgColor).Print();
+            text3.ForeColor((string)color).BackColor(bgColor).Print();
+        }
+    }
 
-        string.Empty.Print();
-
-        // Replay Preloader Log
-        if (HS_FancierConsole.IsHeadless)
-            PreloaderConsoleListener.LogEvents.ToList().ForEach(logEventArgs => new HS_ConsoleLogListener().LogEvent(new ManualLogSource("Preloader"), logEventArgs));
+    public static void SetTitle()
+    {
+        try
+        {
+            Version version = typeof(Paths).Assembly.GetName().Version;
+            var productNameProp = typeof(Application).GetProperty("productName", BindingFlags.Public | BindingFlags.Static);
+            ConsoleManager.SetConsoleTitle($"HS Fancier Log v{HS_FancierConsole.ModVersion} - BepInEx {version} - {productNameProp?.GetValue(null, null) ?? Paths.ProcessName}");
+        }
+        catch (Exception e)
+        {
+            Debug.unityLogger.LogError("FancierLog", $"Unable to Set Console Title, error: {e}");
+        }
     }
 
     public static void LogStackTrace(string line)
@@ -258,7 +297,6 @@ public class HS_ConsoleLogListener : ILogListener
         {
             string prefix = new('\t', count);
 
-
             if (count == 0)
                 "\n".Print();
             else
@@ -268,12 +306,10 @@ public class HS_ConsoleLogListener : ILogListener
             if (string.IsNullOrEmpty(sLine))
                 continue;
 
-
             (prefix + stackLine + "\n\r").Underline().ForeColor(stackTraceFGColor).BackColor(stackTraceBGColor).Print();
             count++;
         }
     }
-
-
+    
     public void Dispose() { }
 }

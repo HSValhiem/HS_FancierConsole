@@ -6,11 +6,9 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using BepInEx;
 using BepInEx.Configuration;
-using BepInEx.ConsoleUtil;
 using BepInEx.Logging;
 using Mono.Cecil;
 using UnityEngine;
-using UnityEngine.XR;
 using static BepInEx.ConsoleUtil.Kon;
 using Debug = UnityEngine.Debug;
 using Logger = UnityEngine.Logger;
@@ -30,7 +28,7 @@ namespace HS_FancierConsole
 
         public const string ModGUID = "hs.fancierconsole";
         public const string ModName = "HS_FancierConsole";
-        public const string ModVersion = "0.1.2";
+        public const string ModVersion = "0.1.4";
 
 
         public static object? OriginalLogger;
@@ -75,6 +73,8 @@ namespace HS_FancierConsole
         private static readonly ConfigFile Config = new(Path.Combine(Paths.ConfigPath, ModGUID) + ".cfg", true, FancierConsole);
 
         public static ConfigEntry<bool> ModEnabled = null!;
+        public static ConfigEntry<bool> ConfigBannerEnabled = null!;
+        public static ConfigEntry<bool> ConfigBannerRainbow = null!;
         public static ConfigEntry<LogLevel> ConfigConsoleDisplayedLevel = null!;
         public static ConfigEntry<bool> ConfigLogUnity = null!;
         public static ConfigEntry<string> ConfigDateTimeFormat = null!;
@@ -85,12 +85,20 @@ namespace HS_FancierConsole
         public static ConfigEntry<bool> ConfigEnablePrettyStackTrace = null!;
         public static ConfigEntry<bool> ConfigChangeFont = null!;
 
+        public static ConfigEntry<bool> ChangeTitle = null!;
+
         public static ConfigEntry<string> ConfigDefaultColorsStackTraceBanner = null!;
         public static ConfigEntry<string> ConfigDefaultColorsStackTrace = null!;
         public static ConfigEntry<string> ConfigDefaultColorsException = null!;
         public static ConfigEntry<string> ConfigDefaultColorsExceptionPre = null!;
 
+        public static ConfigEntry<string> ConfigDefaultColorsBanner = null!;
+
+        public static ConfigEntry<string> ConfigDefaultColorsLoading = null!;
+
         public static string[] DefaultColors = { string.Empty };
+        public static string[] DefaultColorsBanner = { string.Empty };
+        public static string[] DefaultColorsLoading = { string.Empty };
         public static List<string> ColorMappingsStrings = new();
         public static string[] DefaultColorsStackTrace = { string.Empty };
         public static string[] DefaultColorsStackTraceBanner = { string.Empty };
@@ -107,6 +115,8 @@ namespace HS_FancierConsole
             ModEnabled.SettingChanged += (_, _) => ToggleMod();
             ToggleMod();
 
+            ChangeTitle = Config.Bind("1 - General", "Change Title", true, "Disable Fancier Log from Changing the Title");
+
             ConfigConsoleDisplayedLevel = Config.Bind("1 - General", "LogLevels",
                 LogLevel.Fatal | LogLevel.Error | LogLevel.Message | LogLevel.Info | LogLevel.Warning,
                 "Which log levels to show in the console output.");
@@ -120,50 +130,24 @@ namespace HS_FancierConsole
             ConfigFontName = Config.Bind("2 - Font", "Font Name", "Consolas", "Name of the Font to Use (Must be TrueType)");
             SetFont();
 
-            ConfigEnablePrettyStackTrace = Config.Bind("4 - Stack Trace Color Mapping", "Pretty Stack Trace", true,
-                "Enable Pretty Stack Trace");
+            ConfigBannerEnabled = Config.Bind("3 - Fancier Log Intro Banner", "Banner Enabled", true, "Enable the Fancier Log Intro Banner");
+            ConfigBannerRainbow = Config.Bind("3 - Fancier Log Intro Banner", "Fancier Log Banner Rainbow Effect", true, "Enable the Fancier Log Intro Banner Rainbow Effect");
 
-            ConfigDefaultColorsStackTraceBanner = Config.Bind("4 - Stack Trace Color Mapping", "Stack Trace Banner Colors",
-                "#000000,#FFA500", "Set Colors for the Stack Trace Banner");
-            ConfigDefaultColorsStackTraceBanner.SettingChanged += (_, _) =>
-                DefaultColorsStackTraceBanner =
-                    ConfigDefaultColorsStackTraceBanner.Value.Split(new[] { ';' },
-                        StringSplitOptions.RemoveEmptyEntries);
-            DefaultColorsStackTraceBanner =
-                ConfigDefaultColorsStackTraceBanner.Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            ConfigDefaultColorsBanner = Config.Bind("3 - Fancier Log Intro Banner", "Banner Color", "#0000CC,#000000", "Set Colors for the Fancier Console Intro Banner");
+            ConfigDefaultColorsBanner.SettingChanged += (_, _) => DefaultColorsBanner = ConfigDefaultColorsBanner.Value.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+            DefaultColorsBanner = ConfigDefaultColorsBanner.Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
 
-            ConfigDefaultColorsStackTrace = Config.Bind("4 - Stack Trace Color Mapping", "Stack Trace Colors",
-                "#FF0000,#000000",
-                "Set Colors for the Stack Trace");
-            ConfigDefaultColorsStackTrace.SettingChanged += (_, _) =>
-                DefaultColorsStackTrace =
-                    ConfigDefaultColorsStackTrace.Value.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-            DefaultColorsStackTrace =
-                ConfigDefaultColorsStackTrace.Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            ConfigDefaultColorsLoading = Config.Bind("3 - Fancier Log Intro Banner", "Loading Text Color", "#0000CC,#000000", "Set Colors for the Fancier Console Intro Loading Text");
+            ConfigDefaultColorsLoading.SettingChanged += (_, _) => DefaultColorsLoading = ConfigDefaultColorsLoading.Value.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+            DefaultColorsLoading = ConfigDefaultColorsLoading.Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
 
-            ConfigDefaultColorsExceptionPre = Config.Bind("4 - Stack Trace Color Mapping", "Exception Prefix Color",
-                "#880000,#000000", "Set Colors for Exception Prefix");
-            ConfigDefaultColorsExceptionPre.SettingChanged += (_, _) =>
-                DefaultColorsExceptionPre =
-                    ConfigDefaultColorsExceptionPre.Value.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-            DefaultColorsExceptionPre =
-                ConfigDefaultColorsExceptionPre.Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-
-            ConfigDefaultColorsException = Config.Bind("4 - Stack Trace Color Mapping", "Exception Message Color",
-                "#FF0000,#000000", "Set Colors Exception Message");
-            ConfigDefaultColorsException.SettingChanged += (_, _) =>
-                DefaultColorsException =
-                    ConfigDefaultColorsException.Value.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-            DefaultColorsException =
-                ConfigDefaultColorsException.Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-
-            ConfigDefaultColors = Config.Bind("3 - General Color Mapping", "Default Colors", "#FFFFFF,#000000",
+            ConfigDefaultColors = Config.Bind("4 - General Color Mapping", "Default Colors", "#FFFFFF,#000000",
                 "Set Default Colors of the Console");
             ConfigDefaultColors.SettingChanged += (_, _) =>
                 DefaultColors = ConfigDefaultColors.Value.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
             DefaultColors = ConfigDefaultColors.Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
 
-            ConfigColorMappings = Config.Bind("3 - General Color Mapping", "Color Map",
+            ConfigColorMappings = Config.Bind("4 - General Color Mapping", "Color Map",
                 "Error|Failed,#FF0000,#000000;" +
                 "AzuAntiCheat,#000000,#FF0000;" +
                 "Warning,#FFFF00,#000000;" +
@@ -177,6 +161,44 @@ namespace HS_FancierConsole
                     .ToList();
             ColorMappingsStrings = ConfigColorMappings.Value.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
                 .ToList();
+
+
+            ConfigEnablePrettyStackTrace = Config.Bind("5 - Stack Trace Color Mapping", "Pretty Stack Trace", true,
+    "Enable Pretty Stack Trace");
+
+            ConfigDefaultColorsStackTraceBanner = Config.Bind("5 - Stack Trace Color Mapping", "Stack Trace Banner Colors",
+                "#000000,#FFA500", "Set Colors for the Stack Trace Banner");
+            ConfigDefaultColorsStackTraceBanner.SettingChanged += (_, _) =>
+                DefaultColorsStackTraceBanner =
+                    ConfigDefaultColorsStackTraceBanner.Value.Split(new[] { ';' },
+                        StringSplitOptions.RemoveEmptyEntries);
+            DefaultColorsStackTraceBanner =
+                ConfigDefaultColorsStackTraceBanner.Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+
+            ConfigDefaultColorsStackTrace = Config.Bind("5 - Stack Trace Color Mapping", "Stack Trace Colors",
+                "#FF0000,#000000",
+                "Set Colors for the Stack Trace");
+            ConfigDefaultColorsStackTrace.SettingChanged += (_, _) =>
+                DefaultColorsStackTrace =
+                    ConfigDefaultColorsStackTrace.Value.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+            DefaultColorsStackTrace =
+                ConfigDefaultColorsStackTrace.Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+
+            ConfigDefaultColorsExceptionPre = Config.Bind("5 - Stack Trace Color Mapping", "Exception Prefix Color",
+                "#880000,#000000", "Set Colors for Exception Prefix");
+            ConfigDefaultColorsExceptionPre.SettingChanged += (_, _) =>
+                DefaultColorsExceptionPre =
+                    ConfigDefaultColorsExceptionPre.Value.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+            DefaultColorsExceptionPre =
+                ConfigDefaultColorsExceptionPre.Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+
+            ConfigDefaultColorsException = Config.Bind("5 - Stack Trace Color Mapping", "Exception Message Color",
+                "#FF0000,#000000", "Set Colors Exception Message");
+            ConfigDefaultColorsException.SettingChanged += (_, _) =>
+                DefaultColorsException =
+                    ConfigDefaultColorsException.Value.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+            DefaultColorsException =
+                ConfigDefaultColorsException.Value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
 
             #endregion
 
@@ -250,8 +272,6 @@ namespace HS_FancierConsole
                     debugStdOut[1].SetValue(null, CustomLogger);
 
                 }
-
-                ConsoleManager.SetConsoleTitle($"HS Fancier Log v{ModVersion}");
             }
             else
             {

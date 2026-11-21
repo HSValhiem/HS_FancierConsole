@@ -1,0 +1,77 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    HS_FancierConsole: a BepInEx 5 PRELOADER patcher, built on the HS_ModStub pipeline (build/HS.targets).
+    It differs from a plugin: it is installed under BepInEx/patchers, merges no libraries (no ILRepack)
+    and needs BepInEx.Preloader.dll from an installed BepInExPack (there is no NuGet package for it in 5.x).
+    Machine paths go in Local.props (copy Local.props.example), never in this file.
+  -->
+  <Import Project="Local.props" Condition="Exists('Local.props')" />
+
+  <!-- Per mod -->
+  <PropertyGroup>
+    <AssemblyName>$(MSBuildProjectName)</AssemblyName>
+    <RootNamespace>$(MSBuildProjectName)</RootNamespace>
+    <!-- GUID, name and version. Version is the single source for the Thunderstore manifest at package time;
+         keep it equal to ModVersion in Plugin.cs. -->
+    <PluginGuid>hs.fancierconsole</PluginGuid>
+    <PluginName>$(MSBuildProjectName)</PluginName>
+    <Version>0.1.4</Version>
+    <!-- Valheim version the mod is built and tested for. -->
+    <ValheimVersion>1.0.21</ValheimVersion>
+    <!-- Folder inside the Thunderstore package the DLL goes into (see build/HS.Patcher.targets). -->
+    <HsInstallSubdir>patchers</HsInstallSubdir>
+  </PropertyGroup>
+
+  <!-- Build settings -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <!-- CS0436: Publicizer's IgnoresAccessChecksToAttribute. -->
+    <NoWarn>$(NoWarn);CS0436</NoWarn>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Authors>HS</Authors>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <!-- Paths (override in Local.props, on the command line with -p:, or with the VALHEIM_DIR environment variable) -->
+  <PropertyGroup>
+    <ValheimDir Condition="'$(ValheimDir)' == ''">$(VALHEIM_DIR)</ValheimDir>
+    <ValheimDir Condition="'$(ValheimDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Valheim</ValheimDir>
+    <!-- Folder holding the UnityEngine DLLs. -->
+    <ValheimManagedDir Condition="'$(ValheimManagedDir)' == ''">$(ValheimDir)\valheim_Data\Managed</ValheimManagedDir>
+    <!-- Folder holding BepInEx.Preloader.dll (BepInEx/core of the game or of a mod-manager profile). -->
+    <BepInExCoreDir Condition="'$(BepInExCoreDir)' == ''">$(ValheimDir)\BepInEx\core</BepInExCoreDir>
+    <!-- Optional: a BepInEx patchers folder (game or mod-manager profile). Empty = no copy after build. -->
+    <DeployDir Condition="'$(DeployDir)' == ''"></DeployDir>
+    <LibDir>$(MSBuildProjectDirectory)\lib</LibDir>
+    <DistDir>$(MSBuildProjectDirectory)\dist</DistDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="dist\**;lib\**;ThunderStore\**" />
+    <None Remove="dist\**;lib\**" />
+  </ItemGroup>
+
+  <!-- Compile-time packages (nothing from these is shipped; BepInExPack provides them at run time) -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="Krafs.Publicizer" Version="2.3.0" PrivateAssets="all" />
+    <PackageReference Include="BepInEx.BaseLib" Version="5.4.21" PrivateAssets="all" ExcludeAssets="runtime" />
+    <!-- The Mono.Cecil version BepInEx 5.4 ships in BepInEx/core. -->
+    <PackageReference Include="Mono.Cecil" Version="0.10.4" PrivateAssets="all" ExcludeAssets="runtime" />
+    <!-- ConsoleManager and ConsoleUtil.Kon are internal in BepInEx.dll; compiler-generated members stay private, or the event backing field makes ConfigEntry.SettingChanged ambiguous. -->
+    <Publicize Include="BepInEx" IncludeCompilerGeneratedMembers="false" />
+  </ItemGroup>
+
+  <!-- Local references (never committed): BepInEx.Preloader (PreloaderConsoleListener) and the Unity logging API -->
+  <ItemGroup>
+    <Reference Include="$(BepInExCoreDir)\BepInEx.Preloader.dll" Private="false" />
+    <Reference Include="$(ValheimManagedDir)\UnityEngine.CoreModule.dll" Private="false" />
+  </ItemGroup>
+
+  <Import Project="build\HS.targets" />
+  <Import Project="build\HS.Patcher.targets" />
+</Project>

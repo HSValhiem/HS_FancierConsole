@@ -1,0 +1,43 @@
+<Project>
+  <!--
+    Preloader-patcher overrides for the shared HS_ModStub steps in build/HS.targets (kept identical to HS_ModStub).
+    Imported after HS.targets, so these targets replace the ones of the same name:
+    - HsCheckPaths: a patcher needs UnityEngine.CoreModule and BepInEx.Preloader, not assembly_valheim.
+    - HsDeploy / HsPackage: run after Build (there is no ILRepacker step: nothing is merged) and
+      put the DLL under $(HsInstallSubdir) (patchers) instead of plugins.
+  -->
+
+  <Target Name="HsCheckPaths" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(ValheimManagedDir)\UnityEngine.CoreModule.dll')"
+           Text="UnityEngine.CoreModule.dll not found in '$(ValheimManagedDir)'. Set ValheimDir (game folder) or ValheimManagedDir in Local.props, with -p:ValheimDir=..., or with the VALHEIM_DIR environment variable." />
+    <Error Condition="!Exists('$(BepInExCoreDir)\BepInEx.Preloader.dll')"
+           Text="BepInEx.Preloader.dll not found in '$(BepInExCoreDir)'. Set BepInExCoreDir (a BepInEx\core folder of BepInExPack_Valheim) in Local.props or with -p:BepInExCoreDir=..." />
+  </Target>
+
+  <Target Name="HsDeploy" AfterTargets="Build" Condition="'$(DeployDir)' != ''">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(DeployDir)" />
+    <Copy SourceFiles="$(TargetDir)$(TargetName).pdb" DestinationFolder="$(DeployDir)" Condition="'$(Configuration)' != 'Release' and Exists('$(TargetDir)$(TargetName).pdb')" />
+    <Message Importance="high" Text="Deployed $(TargetFileName) to $(DeployDir)" />
+  </Target>
+
+  <!-- Release builds: dist/<Name>-<Version>.zip in Thunderstore layout, DLL under patchers/. -->
+  <Target Name="HsPackage" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <PropertyGroup>
+      <_HsStage>$(IntermediateOutputPath)thunderstore\</_HsStage>
+      <_HsZip>$(DistDir)\$(PluginName)-$(Version).zip</_HsZip>
+      <_HsManifest>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\ThunderStore\manifest.json'))</_HsManifest>
+      <_HsManifest>$([System.Text.RegularExpressions.Regex]::Replace($(_HsManifest), '"version_number"\s*:\s*"[^"]*"', '"version_number": "$(Version)"'))</_HsManifest>
+      <_HsReadme>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\ThunderStore\README.md'))</_HsReadme>
+    </PropertyGroup>
+    <Error Condition="$(_HsManifest.Contains('TODO'))" Text="ThunderStore/manifest.json still contains TODO. Fill in description and website_url before packaging." />
+    <Error Condition="$(_HsReadme.Contains('TODO'))" Text="ThunderStore/README.md still contains TODO. Write the mod's Thunderstore page before packaging." />
+    <RemoveDir Directories="$(_HsStage)" />
+    <MakeDir Directories="$(_HsStage)$(HsInstallSubdir);$(DistDir)" />
+    <WriteLinesToFile File="$(_HsStage)manifest.json" Lines="$(_HsManifest)" Overwrite="true" />
+    <Copy SourceFiles="ThunderStore\icon.png;ThunderStore\README.md;ThunderStore\CHANGELOG.md" DestinationFolder="$(_HsStage)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(_HsStage)$(HsInstallSubdir)" />
+    <Delete Files="$(_HsZip)" />
+    <ZipDirectory SourceDirectory="$(_HsStage)" DestinationFile="$(_HsZip)" />
+    <Message Importance="high" Text="Packaged $(_HsZip)" />
+  </Target>
+</Project>

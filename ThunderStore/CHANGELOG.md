@@ -1,3 +1,13 @@
+## 0.1.5
+
+- Updated for Valheim 1.0.21.
+- Rebuilt on the HS_ModStub build setup (net48). A release build makes the Thunderstore zip.
+- The DLL still installs under BepInEx/patchers.
+- Fixed: the README named the wrong config file. It is `hs.fancierconsole.cfg`.
+- Added: MIT LICENSE.
+- Added: credit for Hypertoken as co-developer.
+- Added: AI disclosure section in the README.
+
 ## 0.1.4
 
 - Added: settings for the intro banner.

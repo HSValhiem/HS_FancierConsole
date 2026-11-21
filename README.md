@@ -25,6 +25,9 @@ Co-developed with [Hypertoken](https://github.com/Hypertoken).
 ## Thanks!
 Massive Thanks to [Smoothbrain](https://valheim.thunderstore.io/package/Smoothbrain/) for the amazing Libraries and Mods provided to the community!
 
+## AI Disclosure
+This release (0.1.5) was made with AI help. The code changes, the build and packaging setup, and the README and changelog text were written with Claude (Anthropic) in Claude Code. Every change was reviewed and tested in game before release.
+
 ## Beta Version Notice:
 
 Please note that the current version of this mod, **Fancier Console**, is in beta stage. While we have thoroughly tested its functionality, there might still be some unforeseen issues or bugs.
@@ -54,7 +57,7 @@ The configuration file controls the window title, which log levels and Unity mes
 
 ### With Manual Installation:
 1. Locate the configuration file in this folder: `<Steam Location>\steamapps\common\Valheim\BepInEx\config`
-2. Open the file named `"hs_fancierconsole.cfg"` using a text editor.
+2. Open the file named `"hs.fancierconsole.cfg"` using a text editor.
 3. Edit the configuration settings to your liking.
 
 Make sure to save the changes to the configuration file before launching the game.

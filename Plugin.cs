@@ -28,7 +28,7 @@ namespace HS_FancierConsole
 
         public const string ModGUID = "hs.fancierconsole";
         public const string ModName = "HS_FancierConsole";
-        public const string ModVersion = "0.1.4";
+        public const string ModVersion = "0.1.5";
 
 
         public static object? OriginalLogger;

@@ -15,7 +15,7 @@
          keep it equal to ModVersion in Plugin.cs. -->
     <PluginGuid>hs.fancierconsole</PluginGuid>
     <PluginName>$(MSBuildProjectName)</PluginName>
-    <Version>0.1.4</Version>
+    <Version>0.1.5</Version>
     <!-- Valheim version the mod is built and tested for. -->
     <ValheimVersion>1.0.21</ValheimVersion>
     <!-- Folder inside the Thunderstore package the DLL goes into (see build/HS.Patcher.targets). -->
